@@ -640,7 +640,10 @@ classdef Graph < handle
             
         end
         
-        function [subGraphs,cycles] = balanceThePartitions(obj,subGraphs,cycles)
+        
+        
+        
+        function [subGraphs,cycles] = balanceThePartitions(obj,subGraphs,cycles) % Not used!
             % find the sub-graph, cycle and the set of targets that can be sold
             
             % finding the worst target in the worst cycle/subGraph
@@ -810,6 +813,8 @@ classdef Graph < handle
                 contractedSubGraph = contractedSubGraph(1);
                 cycleTSP = Cycle(contractedSubGraph.findTSPCycle()); 
                 cycleTSP = cycleTSP.updateEdgeList(contractedSubGraph);
+                cycleTSP = cycleTSP.createCycleEvaluator(contractedSubGraph);
+                cycleTSP.searchWithLB = 1;
                 contractedCycle = cycleTSP.executeGreedyExpansions(contractedSubGraph);
                 [lbCon,~] = contractedCycle.getLowerBound(subGraphs(maxInd));
                 
@@ -823,6 +828,8 @@ classdef Graph < handle
                 expandedSubGraph = expandedSubGraph(1);
                 cycleTSP = Cycle(expandedSubGraph.findTSPCycle()); % Cycle([8,1,10,8,1,10,8,15,13]);
                 cycleTSP = cycleTSP.updateEdgeList(expandedSubGraph);
+                cycleTSP = cycleTSP.createCycleEvaluator(expandedSubGraph);
+                cycleTSP.searchWithLB = 1;
                 expandedCycle = cycleTSP.executeGreedyExpansions(expandedSubGraph);
                 [lbExp,~] = expandedCycle.getLowerBound(obj);
                 
@@ -865,17 +872,15 @@ classdef Graph < handle
             obj.loadShortestPaths2('fast'); % try 'slow' if have patience 
             partitions = obj.partitionTheGraph(numOfAgents,'smallest lower bound'); % spectral clustering approach 2
 
-            % Option 3: Clustering manually
-            % partitions = {[1,8,10,13,15],[3,4,5,7,9],[2,6,11,12,14]}; % Manual - visually Balanced
-            % partitions = {[1,8,13,15],[3,4,5,7,9,10],[2,6,11,12,14]}; % Manual - visually unbalanced
-
             subGraphs = obj.generateSubGraphs(partitions);
             cycles = [];
             for subGraph = subGraphs
 
                 cycleTSP = Cycle(subGraph.findTSPCycle()); % Cycle([8,1,10,8,1,10,8,15,13]);
                 cycleTSP = cycleTSP.updateEdgeList(subGraph);
-
+                cycleTSP = cycleTSP.createCycleEvaluator(subGraph);
+                cycleTSP.searchWithLB = 1;
+                
                 greedyExpandedCycle = cycleTSP.executeGreedyExpansions(subGraph);
                 cycles = [cycles, greedyExpandedCycle];  
 

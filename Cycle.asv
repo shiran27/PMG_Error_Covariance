@@ -722,7 +722,7 @@ classdef Cycle
             
             cycle = Cycle(contractedCycle); % Cycle([8,1,10,8,1,10,8,15,13]);
             cycle = cycle.updateEdgeList(graph);
-            cycle = cycle.createCycleEvaluator(graph);
+            cycle = cycle.createCycleEvaluator(gre);
             cycle.searchWithLB = 1;
             if length(cycle.targetList)>2
                 cycle = cycle.executeGreedyExpansions(graph);

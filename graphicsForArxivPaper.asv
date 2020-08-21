@@ -403,7 +403,7 @@
 
 
 
-%% Sam's main code : Fast
+%% Sam's main code : Fast, with target exchanges
 clear all
 close all
 clc
@@ -438,16 +438,41 @@ for subGraph = subGraphs
 
 end
 %drawing the initial subgraphs and cycles
+graph.drawAll(subGraphs,cycles);
+for i = 1:1:length(cycles)
+    cycles(i).drawFullCycle(subGraphs(i)); 
+    cost = cycles(i).getCost();
+    costs = [costs, cost];
+    lowerBound = cycles(i).getLowerBound(subGraphs(i));
+    lowerBounds = [lowerBounds, lowerBound];
+    
+    dwellTimes{i} = cycles(i).cycleEvaluator.getDwellTimes();
+end
+%interchange algorithm
+[subGraphs,cycles,gainVal] = graph.balanceThePartitions2(subGraphs,cycles);
+while gainVal > 0
+    graph.drawAll(subGraphs,cycles); % drawing intermediate subgraphs and cycles
+    [subGraphs,cycles,gainVal] = graph.balanceThePartitions2(subGraphs,cycles);
+end
+%drawing the fianl subgraphs and cycles with costs, lowerBounds and dwell times
 costs = [];
 lowerBounds = [];
 dwellTimes = cell(numOfAgents,1);
 graph.drawAll(subGraphs, cycles);
 for i = 1:1:numOfAgents
     cycles(i).drawFullCycle(subGraphs(i)); 
-    lowerBounds = [s, cycles(i).getCost()];
-    dwelltimes{i} = cycles(i).cycleEvaluator.getDwellTimes();
+    
+    cost = cycles(i).getCost();
+    costs = [costs, cost];
+    lowerBound = cycles(i).getLowerBound(subGraphs(i));
+    lowerBounds = [lowerBounds, lowerBound];
+    
+    dwellTimes{i} = cycles(i).cycleEvaluator.getDwellTimes();
 end
-% end Sam's main code: Fast
+costs
+lowerBounds
+dwellTimes{:}
+% end Sam's main code: Fast, with target exchanges
 
 
 

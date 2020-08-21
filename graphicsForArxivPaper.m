@@ -403,16 +403,16 @@
 
 
 
-%% Sam's main code : Fast
+%% Sam's main code : Fast, with target exchanges
 clear all
 close all
 clc
 graph = Graph(0); % create the graph object : index 0 for main graph 
-rand('seed', 7); %% 4,5,7 seed
-numOfTargets = 7; % 15 % 12
+rand('seed', 7); %% try this with 2 to see the error
+numOfTargets = 7; % 
 dimentionOfSpace = 2;
 sizeOfSpace = 1;  % 1x1 square
-communicationRadius = 0.7; %0.7 %0.5 % 0.7
+communicationRadius = 0.7; 
 
 % % partition the graph
 numOfAgents = 2;
@@ -438,18 +438,44 @@ for subGraph = subGraphs
 
 end
 %drawing the initial subgraphs and cycles
-costs = [];
-lowerBounds = [];
+graph.drawAll(subGraphs,cycles);
+costs1 = [];
+lowerBounds1 = [];
+for i = 1:1:length(cycles)
+    cycles(i).drawFullCycle(subGraphs(i)); 
+    cost = cycles(i).getCost();
+    costs1 = [costs1, cost];
+    lowerBound = cycles(i).getLowerBound(subGraphs(i));
+    lowerBounds1 = [lowerBounds1, lowerBound];
+    
+    dwellTimes{i} = cycles(i).cycleEvaluator.getDwellTimes();
+end
+%interchange algorithm
+[subGraphs,cycles,gainVal] = graph.balanceThePartitions2(subGraphs,cycles);
+while gainVal > 0
+    graph.drawAll(subGraphs,cycles); % drawing intermediate subgraphs and cycles
+    [subGraphs,cycles,gainVal] = graph.balanceThePartitions2(subGraphs,cycles);
+end
+%drawing the fianl subgraphs and cycles with costs, lowerBounds and dwell times
+costs2 = [];
+lowerBounds2 = [];
 dwellTimes = cell(numOfAgents,1);
-graph.drawAll(subGraphs, cycles);
 for i = 1:1:numOfAgents
     cycles(i).drawFullCycle(subGraphs(i)); 
-    lowerBounds = [lowerBounds, cycles(i).getLowerBound(subGraphs(i))];
-    dwelltimes{i} = cycles(i).cycleEvaluator.getDwellTimes();
+    
+    cost = cycles(i).getCost();
+    costs2 = [costs2, cost];
+    lowerBound = cycles(i).getLowerBound(subGraphs(i));
+    lowerBounds2 = [lowerBounds2, lowerBound];
+    
+    dwellTimes{i} = cycles(i).cycleEvaluator.getDwellTimes();
 end
-lowerBounds
-dwellTimes
-% end Sam's main code: Fast
+costs1
+lowerBounds1
+costs2
+lowerBounds2
+dwellTimes{:}
+% end Sam's main code: Fast, with target exchanges
 
 
 
