@@ -444,11 +444,9 @@ dwellTimes = cell(numOfAgents,1);
 graph.drawAll(subGraphs, cycles);
 for i = 1:1:numOfAgents
     cycles(i).drawFullCycle(subGraphs(i)); 
-    lowerBounds = [lowerBounds, cycles(i).getLowerBound(subGraphs(i))];
+    lowerBounds = [s, cycles(i).getCost()];
     dwelltimes{i} = cycles(i).cycleEvaluator.getDwellTimes();
 end
-lowerBounds
-dwellTimes
 % end Sam's main code: Fast
 
 
