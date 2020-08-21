@@ -408,11 +408,11 @@ clear all
 close all
 clc
 graph = Graph(0); % create the graph object : index 0 for main graph 
-rand('seed', 7); %% try this with 2 to see the error
+rand('seed', 250); %% try this with 2 to see the error
 numOfTargets = 7; % 
 dimentionOfSpace = 2;
 sizeOfSpace = 1;  % 1x1 square
-communicationRadius = 0.7; 
+communicationRadius = 0.45; 
 
 % % partition the graph
 numOfAgents = 2;

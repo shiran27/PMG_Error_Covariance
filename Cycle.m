@@ -25,7 +25,8 @@ classdef Cycle
         function obj = createCycleEvaluator(obj,graph)
             indexTarget = 1;
             obj.conversionGraphIdToCycleTargetId = zeros(max(obj.targetList),1);
-            targetsSS = cell(length(obj.targetList),1);
+            c = unique(obj.targetList,'first');
+            targetsSS = cell(length(c),1);
             
             for indexTarget = 1:length(graph.targets)
                 %if(obj.auxTargetIndexList(indexList) == 1)
@@ -733,6 +734,10 @@ classdef Cycle
         %%
         % Sam
         function cost = getCost(obj)
+            if length(obj.targetList)==1
+                targetIndex = obj.conversionGraphIdToCycleTargetId(obj.targetList);
+                [cost]=obj.cycleEvaluator.targets{targetIndex}.computeLowerBound(0);
+            else
                 visitingSequence = obj.conversionGraphIdToCycleTargetId(obj.targetList);
                 travelTime = obj.transitTimeList;
                 tMin = 0.1*sum(travelTime);
@@ -740,6 +745,7 @@ classdef Cycle
                 obj.cycleEvaluator.visitingSequence = visitingSequence;
                 obj.cycleEvaluator.travelTime = travelTime;
                 [cost,~]=obj.cycleEvaluator.goldenRatioSearch(tMin,tMax);
+            end
         end
 %         function lb = getLowerBound(obj,graph)
 %             visitingSequence = obj.targetList;

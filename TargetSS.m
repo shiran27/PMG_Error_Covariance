@@ -314,6 +314,9 @@ classdef TargetSS < handle
         end
         
         function updateTargetTime(obj,tTravel,tTotal)
+            if iscolumn(tTravel)
+                tTravel = tTravel';
+            end
             travelSoFar = [0,tTravel];
             travelSoFar = travelSoFar(1:end-1);
             [peak,tVisit] = obj.searchForOptimalTimeDistribution1D(tTotal-sum(tTravel),tTravel);
