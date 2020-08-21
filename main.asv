@@ -7,36 +7,34 @@ clc
 graph = Graph(0); % create the graph object : index 0 for main graph 
 
 %Case 1: 7, 7, 0.7, 2;   Case 2: 250, 7, 0.45, 2;   Case 3: 500, 10, 0.45, 4
-rand('seed', 250); %% 7, 250, 500
+rand('seed', 7); %% 7, 250, 500
 numOfTargets = 7; % 7, 10
 dimentionOfSpace = 2;
 sizeOfSpace = 1;  % 1x1 square
-communicationRadius = 0.45; %0.7,  0.45
+communicationRadius = 0.7; %0.7,  0.45
 
 % load the agents
 numOfAgents = 2; %2, 4
-controlMethod = 'periodic';
+
+% Control Options: Periodic, RHC-Periodic, RHC-Learn, RHC, variable, fixed, random
+controlMethod = 'Periodic';
 
 % create the graph and draw
 graph = graph.loadARandomGraph(numOfTargets, numOfAgents, dimentionOfSpace, sizeOfSpace, communicationRadius);
 graph.drawGraph(1);
 
 % if we try the periodic controller
-if isequal(controlMethod,'periodic')
-    graph.assignCyclesToAgents
+if isequal(controlMethod,'RHC-Periodic') | isequal(controlMethod,'Periodic')
+    graph.assignCyclesToAgents(controlMethod);
 end
-% Option 3: Clustering manually
-% partitions = {[1,8,10,13,15],[3,4,5,7,9],[2,6,11,12,14]}; % Manual - visually Balanced
-% partitions = {[1,8,13,15],[3,4,5,7,9,10],[2,6,11,12,14]}; % Manual - visually unbalanced
-
 
 
 timeResolution = 0.001;
-periodT = 200; % 50
+periodT = 550; % 50
 fixedHorizonValue = 2.5; 
 cost = 0;  
 textHandle1 = text();  textHandle2 = text(); 
-plotMode = true; 
+plotMode = false; 
 videoMode = true;
 data = zeros(periodT/timeResolution+1, numOfTargets, 3);
 timeSteps = 1;
@@ -52,13 +50,13 @@ for t = 0:timeResolution:periodT
         end
     end
     
-    % agent display
+    % agent update
     horizon = min(fixedHorizonValue,periodT-t);
     for i = 1:1:numOfAgents
-        graph.agents(i).update(timeResolution,t,graph,horizon);     
+        graph.agents(i).update(timeResolution,t,graph,horizon,controlMethod);     
     end
     
-    % display
+    % display & video
     if rem(t,0.1)==0
         time = t
         graph.updateGraph(1,t);

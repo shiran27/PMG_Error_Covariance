@@ -865,7 +865,7 @@ classdef Graph < handle
             
         end
         
-        function output = assignCyclesToAgents(obj)
+        function output = assignCyclesToAgents(obj, controlMethod)
             
             numOfAgents = length(obj.agents);
             
@@ -900,6 +900,9 @@ classdef Graph < handle
             end
             % drawing the final cycles
             for i = 1:1:length(cycles)
+                if isequal(controlMethod,'Periodic')
+                    cost = cycles(i).getCost()
+                end
                 cycles(i).drawFullCycle(subGraphs(i)); 
             end
             
@@ -945,6 +948,12 @@ classdef Graph < handle
                 cycleState = find(cycles(cycleId).targetList==endTarget);
                 cycleState = cycleState(1);
                 obj.agents(agentId).cycleState = [entryPathState, cycleState];
+                
+                % dwell times
+                if isequal(controlMethod,'Periodic')
+%                     cost = cycle(cycleId).getCost(); % prerequisite for dwell time computation
+                    obj.agents(agentId).dwellTimes = cycles(cycleId).cycleEvaluator.getDwellTimes();
+                end
             end
             % entry paths and cycles are loaded to each agent!
             

@@ -15,6 +15,8 @@ classdef Agent < handle
         assignedCycle
         entryPathToCycle
         cycleState % [entryPathState,assignedCycleState]
+        dwellTimes
+        
         learnMode
         pastData
         
@@ -36,7 +38,7 @@ classdef Agent < handle
         end
         
         
-        function obj = update(obj,deltaT,currentTime,graph,horizon)
+        function obj = update(obj,deltaT,currentTime,graph,horizon,controlMethod)
             if currentTime ~= 0 & ~obj.coverednessEventTriggered
                 if currentTime >  obj.nextEventTime & obj.agentMode == 1 % travel time exceeded
                     % pick a dwell time and start dwelling 
@@ -47,11 +49,12 @@ classdef Agent < handle
                     graph.targets(obj.residingTarget).timeSinceLastEvent = 0;
                     graph.targets(obj.residingTarget).OmegaAtLastEvent = graph.targets(obj.residingTarget).Omega;
                     
+                    dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,controlMethod);
 %                     dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'random'); % 'RHC', 'fixed', 'random', 'variable'
 %                     dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'fixed'); % 'RHC', 'fixed', 'random', 'variable'
 %                     dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'variable'); % 'fixed', 'random', 'variable', 'RHC'
 %                     dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'RHC'); % 'RHC', 'fixed', 'random', 'variable'
-                    dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'RHC-Periodic'); % 'RHC', 'fixed', 'random', 'variable'
+%                     dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'RHC-Periodic'); % 'RHC', 'fixed', 'random', 'variable'
                     
                     
                     obj.nextEventTime = currentTime + dwellTimeAhead;
@@ -60,9 +63,10 @@ classdef Agent < handle
                     % pick a neighbor to visit and start travelling
                     disp(['Agent ',num2str(obj.index),' finished dwelling at t = ',num2str(currentTime),' at taregt ',num2str(obj.residingTarget)])
                     
+                    [nextTargetId, travelTimeAhead] = obj.nextVisitTarget(graph,horizon,controlMethod); 
 %                     [nextTargetId, travelTimeAhead] = obj.nextVisitTarget(graph,horizon,'highestCovariance'); %'highestCovariance'
 %                     [nextTargetId, travelTimeAhead] = obj.nextVisitTarget(graph,horizon,'RHC'); %'highestCovariance'
-                    [nextTargetId, travelTimeAhead] = obj.nextVisitTarget(graph,horizon,'RHC-Periodic'); %'highestCovariance'
+%                     [nextTargetId, travelTimeAhead] = obj.nextVisitTarget(graph,horizon,'RHC-Periodic'); %'highestCovariance'
                     
                     
                     if nextTargetId ~= obj.residingTarget
@@ -93,11 +97,13 @@ classdef Agent < handle
                 end
             else % only at begining: t = 0 or when coveredness related event is triggered
                 obj.agentMode = 0;  % in dwell mode 
+                
+                dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,controlMethod);
 %                 dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'random'); % 'RHC', 'fixed', 'random', 'variable'
 %                 dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'fixed'); % 'RHC', 'fixed', 'random', 'variable'
 %                 dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'variable'); % 'RHC', 'fixed', 'random', 'variable'
 %                 dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'RHC'); % 'RHC', 'fixed', 'random', 'variable'
-                dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'RHC-Periodic'); % 'RHC', 'fixed', 'random', 'variable'
+%                 dwellTimeAhead = obj.dwellTimeAhead(graph,horizon,'RHC-Periodic'); % 'RHC', 'fixed', 'random', 'variable'
                 
                 obj.nextEventTime = currentTime + dwellTimeAhead;
                 if obj.coverednessEventTriggered
@@ -109,20 +115,81 @@ classdef Agent < handle
         end
         
         
-        function dwellTime = dwellTimeAhead(obj, graph, horizon, method)
-            if isequal(method,'random')
+        
+        function dwellTime = dwellTimeAhead(obj, graph, horizon, controlMethod)
+            if isequal(controlMethod,'random')
                 dwellTime = 5*rand(1,1);
-            elseif isequal(method,'fixed')
+                
+                
+            elseif isequal(controlMethod,'fixed')
                 dwellTime = 2.5;
-            elseif isequal(method,'variable')
+                
+                
+            elseif isequal(controlMethod,'variable')
                 currentTargetId = obj.residingTarget;
                 epsilon = 0.05; % get Omega/Omega_ss to 1.1 (or 0.9 if Omgea_0 is less than Omega_ss)
                 dwellTime = graph.targets(currentTargetId).dwellTimeToReduceCovarianceUptoFraction(epsilon);
-            elseif isequal(method,'RHC-Periodic')
+                
+                
+            elseif isequal(controlMethod,'RHC') | isequal(controlMethod,'RHC-Learn')
+                currentTargetId = obj.residingTarget;
+                % finding feasible neighbors
+                feasibleTargets = [];
+                for targetId = 1:1:length(graph.targets)
+                    if graph.distanceMatrix(currentTargetId,targetId) < 1.5 & isempty(graph.targets(targetId).residingAgents) & currentTargetId ~= targetId 
+                        covered = false;
+                        for agentId = 1:1:length(graph.agents)
+                            if length(graph.agents(agentId).residingTarget)>1 & obj.index ~= agentId
+                                if graph.agents(agentId).residingTarget(2) == targetId
+                                    covered = true;
+                                    break
+                                end
+                            end
+                        end
+                        if ~covered
+                            feasibleTargets = [feasibleTargets, targetId];
+                        end
+                    end
+                end
+                
+                nextTargetId = currentTargetId;
+                
+                if obj.learnMode
+                    dataFile = zeros(length(feasibleTargets)+1,4);
+                    dataFile(1,:) = [currentTargetId, graph.targets(currentTargetId).Omega, 0, 0]; %targetId_i, Omega_i, ~, j^*
+                    dataCount = 2;
+                end
+                
+                dwellTime = 0.001;
+                minCost = inf;
+                for targetId = feasibleTargets
+                    % solve for the optimum dwell time to be spent at target i=currentTargetId  and target j=targetId upun visiting.
+                    % associated cost is used to find the best dwell time at target i  
+                    [cost, u_i, u_j] = obj.solveRHCP1(targetId,feasibleTargets,graph,horizon); 
+                    
+                    if obj.learnMode
+                        dataFile(dataCount,:) = [targetId, graph.targets(targetId).Omega, u_i, u_j]; % j, Omega_j, u_i
+                        dataCount = dataCount + 1;
+                    end
+                    
+                    if cost < minCost 
+                        minCost = cost;
+                        nextTargetId = targetId;
+                        dwellTime = u_i;
+                    end
+                end
+                
+                if obj.learnMode & currentTargetId ~= nextTargetId
+                    dataFile(1,4) = nextTargetId;
+                    obj.pastData{length(obj.pastData)+1} = dataFile;
+                end
+                
+            
+            elseif isequal(controlMethod,'RHC-Periodic')
                 currentTargetId = obj.residingTarget;
                 % finding the next target to visit
-                if obj.cycleState(1) < 0 % have to enter the cycle
-                    nextTarget = obj.entryPathToCycle(end+obj.cycleState(1));
+                if obj.cycleState(1) < 0 % have to enter the cycle yet
+                    nextTarget = obj.entryPathToCycle(end+obj.cycleState(1)+1);
                     feasibleTargets = [nextTarget];
                 else % already in the cycle
                     if obj.cycleState(2)==length(obj.assignedCycle.targetList)
@@ -149,87 +216,35 @@ classdef Agent < handle
                             end
                         end
                     end
-%                     if length(obj.assignedCycle.targetList)>=3
-%                         if obj.cycleState(2) == 1
-%                             previousTargetIndex = length(obj.assignedCycle.targetList);
-%                         else
-%                             previousTargetIndex = obj.cycleState(2) - 1;
-%                         end
-%                         previousTarget = obj.assignedCycle.targetList(previousTargetIndex);
-%                         feasibleTargets = [previousTarget, nextTarget];
-%                     else
-%                         feasibleTargets = [nextTarget];
-%                     end
-                    
                 end
-                
                 [~, dwellTime, ~] = obj.solveRHCP1(nextTarget,feasibleTargets,graph,horizon); 
-                  
-            elseif isequal(method,'RHC')
-                currentTargetId = obj.residingTarget;
-                % finding feasible neighbors
-                feasibleTargets = [];
-                for targetId = 1:1:length(graph.targets)
-                    if graph.distanceMatrix(currentTargetId,targetId) < 1.5 & isempty(graph.targets(targetId).residingAgents) & currentTargetId ~= targetId 
-                        covered = false;
-                        for agentId = 1:1:length(graph.agents)
-                            if length(graph.agents(agentId).residingTarget)>1 & obj.index ~= agentId
-                                if graph.agents(agentId).residingTarget(2) == targetId
-                                    covered = true;
-                                    break
-                                end
-                            end
-                        end
-                        if ~covered
-                            feasibleTargets = [feasibleTargets, targetId];
-                        end
-                    end
-                end
-    %             feasibleTargets
-
-                nextTargetId = currentTargetId;
                 
-                if obj.learnMode
-                    dataFile = zeros(length(feasibleTargets)+1,4);
-                    dataFile(1,:) = [currentTargetId, graph.targets(currentTargetId).Omega, 0, 0]; %targetId_i, Omega_i, ~, j^*
-                    dataCount = 2;
+                
+            elseif isequal(controlMethod,'Periodic')
+                if obj.cycleState(1) < 0 % have to enter the cycle yet
+                    dwellTime = 0;
+                else % already in the cycle
+                    if obj.cycleState(2)==length(obj.assignedCycle.targetList)
+                        nextTragetIndex = 1;
+                    else
+                        nextTragetIndex = obj.cycleState(2) + 1;
+                    end
+                    dwellTime = obj.dwellTimes(nextTragetIndex);
                 end
                 
-                dwellTime = 2.5;
-                minCost = inf;
-                for targetId = feasibleTargets
-                    % solve for the optimum dwell time to be spent at target i=currentTargetId  and target j=targetId upun visiting.
-                    % associated cost is used to find the best dwell time at target i  
-                    [cost, u_i, u_j] = obj.solveRHCP1(targetId,feasibleTargets,graph,horizon); 
-                    
-                    if obj.learnMode
-                        dataFile(dataCount,:) = [targetId, graph.targets(targetId).Omega, u_i, u_j]; % j, Omega_j, u_i
-                        dataCount = dataCount + 1;
-                    end
-                    
-                    if cost < minCost 
-                        minCost = cost;
-                        nextTargetId = targetId;
-                        dwellTime = u_i;
-                    end
-                end
-                
-                if obj.learnMode
-                    dataFile(1,4) = nextTargetId;
-                    obj.pastData{length(obj.pastData)+1} = dataFile;
-                end
                 
             end
         end
         
         
-        function [nextTargetId, travelTimeAhead]= nextVisitTarget(obj, graph, horizon, method)
+        
+        function [nextTargetId, travelTimeAhead]= nextVisitTarget(obj, graph, horizon, controlMethod)
             currentTargetId = obj.residingTarget;
             
-            if isequal(method,'RHC-Periodic')
+            if isequal(controlMethod,'RHC-Periodic') | isequal(controlMethod,'Periodic')
                 % finding the next target to visit
                 if obj.cycleState(1) < 0 % have to enter the cycle
-                    nextTargetId = obj.entryPathToCycle(end+1-obj.cycleState(1));
+                    nextTargetId = obj.entryPathToCycle(end+obj.cycleState(1)+1);
                     obj.cycleState(1) = obj.cycleState(1) + 1; 
                 else % already in the cycle
                     if obj.cycleState(2)==length(obj.assignedCycle.targetList)
@@ -241,8 +256,11 @@ classdef Agent < handle
                 end
                 travelTimeAhead = graph.distanceMatrix(currentTargetId,nextTargetId)/obj.speed;
                 return;
+                
+                
             end
             % otherwise:
+            
             
             % feasible neighbors
             feasibleTargets = [];
@@ -265,7 +283,7 @@ classdef Agent < handle
             end
 %             feasibleTargets
             
-            if obj.learnMode
+            if obj.learnMode & isequal(controlMethod,'RHC-Learn')
                 dataFile = zeros(length(feasibleTargets)+1,3);
                 dataFile(1,:) = [currentTargetId, graph.targets(currentTargetId).Omega, 0]; %targetId_i, Omega_i, j^*
                 dataCount = 2;
@@ -274,9 +292,10 @@ classdef Agent < handle
             nextTargetId = currentTargetId;
             minCost = inf;
             for targetId = feasibleTargets
-                if isequal(method,'highestCovariance')
-                    cost = -1*graph.targets(targetId).Omega;
-                elseif isequal(method,'RHC')
+                if  isequal(controlMethod,'variable') | isequal(controlMethod,'fixed') | isequal(controlMethod,'random') %isequal(controlMethod,'highestCovariance')
+                    cost = -1*graph.targets(targetId).Omega; % select the target with the highest covariance out of feasible targets
+                
+                elseif isequal(controlMethod,'RHC') | isequal(controlMethod,'RHC-Learn')
                     % solve for the optimum dwell time to be spent at target j=targetId upun visiting.
                     % associated cost is used to fined th ebest taget to visit next 
                     [cost, u_j] = obj.solveRHCP2(targetId,feasibleTargets,graph,horizon); 
@@ -284,8 +303,7 @@ classdef Agent < handle
                     if obj.learnMode
                         dataFile(dataCount,:) = [targetId, graph.targets(targetId).Omega, u_j]; % j, Omega_j, u_j
                         dataCount = dataCount + 1;
-                    end
-                    
+                    end    
                 end
                 
                 if cost < minCost 
@@ -294,7 +312,7 @@ classdef Agent < handle
                 end
             end
             
-            if obj.learnMode
+            if obj.learnMode & nextTargetId ~= currentTargetId & isequal(controlMethod,'RHC-Learn')
                 dataFile(1,3) = nextTargetId;
                 obj.pastData{length(obj.pastData)+1} = dataFile;
             end
