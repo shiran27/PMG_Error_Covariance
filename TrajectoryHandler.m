@@ -36,21 +36,23 @@ classdef TrajectoryHandler < handle
             travelTime = obj.travelTime;
             alpha = obj.alpha;
             visits = obj.visitingSequence;
-            Ntargets = length(obj.targets);
+            uniqueVisits = unique(obj.visitingSequence);
+            Ntargets = length(uniqueVisits);
             
-            obj.logTraces = zeros(Ntargets,obj.Niter);
-            obj.logTime = zeros(Ntargets,obj.Niter);
+            obj.logTraces = zeros(max(uniqueVisits),obj.Niter);
+            obj.logTime = zeros(max(uniqueVisits),obj.Niter);
             
             if length(obj.targetVisitTime)== 0
-                targetVisitTime = ones(1,(Ntargets))*totalTime/Ntargets;
+                targetVisitTime(uniqueVisits) = ones(1,(Ntargets))*totalTime/Ntargets;
             else
-                targetVisitTime = obj.targetVisitTime/sum(obj.targetVisitTime)*totalTime;
+                targetVisitTime(uniqueVisits) = obj.targetVisitTime(uniqueVisits)/sum(obj.targetVisitTime(uniqueVisits))*totalTime;
             end
             
             targets = obj.targets;
             visitTime = zeros(size(travelTime));
                 
-            for indexTarget = 1:Ntargets
+            for indexAux = 1:Ntargets
+                indexTarget = uniqueVisits(indexAux);
                 currentTargetVisits = find(visits == indexTarget);
                 for indexVisit = 1:length(currentTargetVisits)
                     visitTime(currentTargetVisits(indexVisit)) = targetVisitTime(indexTarget)/length(currentTargetVisits);
@@ -59,8 +61,12 @@ classdef TrajectoryHandler < handle
             
             newVisitTime = zeros(size(visitTime));
             avgPeak = 0;
-            for indexTarget = 1:Ntargets
+            for indexAux = 1:Ntargets
+                indexTarget = uniqueVisits(indexAux);
                 currentTargetVisits = find(visits == indexTarget);
+                if length(currentTargetVisits)==0
+                    disp('Hi')
+                end
                 currentTargetTravelTime = zeros(size(currentTargetVisits));
                 for indexCurrentVisit = 1:length(currentTargetVisits)-1
                     currentTargetTravelTime(indexCurrentVisit) =sum(travelTime(currentTargetVisits(indexCurrentVisit):currentTargetVisits(indexCurrentVisit+1)-1))+...
@@ -83,7 +89,8 @@ classdef TrajectoryHandler < handle
                 minPeak = inf;
                 visitTime = newVisitTime;
                 newAvgPeak = 0;
-                for indexTarget=1:Ntargets
+                for indexAux=1:Ntargets
+                    indexTarget = uniqueVisits(indexAux);
                     targetVisitTime(indexTarget) = targetVisitTime(indexTarget)+alpha*(log(targets{indexTarget}.X)-avgPeak);
                     currentTargetVisits = find(visits == indexTarget);
                     currentTargetTravelTime = zeros(size(currentTargetVisits));
@@ -163,12 +170,16 @@ classdef TrajectoryHandler < handle
         
         
         function dwellTimes = getDwellTimes(obj)
-            dwellTimes = zeros(length(obj.visitingSequence),1);
-            indexTargetVisit = ones(length(obj.targets),1);
-            for indexVisit = 1:length(dwellTimes)
-                currentTarget = obj.visitingSequence(indexVisit);
-                dwellTimes(indexVisit) = obj.targets{currentTarget}.tOn(indexTargetVisit(currentTarget));
-                indexTargetVisit(currentTarget) = indexTargetVisit(currentTarget)+1;
+            if length(obj.visitingSequence)==1
+                dwellTimes = inf;
+            else
+                dwellTimes = zeros(length(obj.visitingSequence),1);
+                indexTargetVisit = ones(length(obj.targets),1);
+                for indexVisit = 1:length(dwellTimes)
+                    currentTarget = obj.visitingSequence(indexVisit);
+                    dwellTimes(indexVisit) = obj.targets{currentTarget}.tOn(indexTargetVisit(currentTarget));
+                    indexTargetVisit(currentTarget) = indexTargetVisit(currentTarget)+1;
+                end
             end
         end
         
