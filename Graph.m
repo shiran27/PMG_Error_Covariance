@@ -82,7 +82,7 @@ classdef Graph < handle
                 tarId = round(numOfTargets/numOfAgents)*(i-1)+1;
                 obj.targets(tarId).residingAgents = [i];
                 agentPosition = obj.targets(tarId).position;
-                newAgent = Agent(i,agentPosition,agentSpeed,tarId);
+                newAgent = Agent(i,agentPosition,agentSpeed,tarId,numOfTargets);
                 obj.agents = [obj.agents, newAgent];
             end
             

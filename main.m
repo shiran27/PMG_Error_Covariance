@@ -17,7 +17,7 @@ communicationRadius = 0.7; %0.7,  0.45
 numOfAgents = 2; %2, 4
 
 % Control Options: Periodic, RHC-Periodic, RHC-Learn, RHC, variable, fixed, random
-controlMethod = 'Periodic';
+controlMethod = 'RHC-Re-Learn';
 
 % create the graph and draw
 graph = graph.loadARandomGraph(numOfTargets, numOfAgents, dimentionOfSpace, sizeOfSpace, communicationRadius);
@@ -30,12 +30,12 @@ end
 
 
 timeResolution = 0.001;
-periodT = 50; % 50
+periodT = 200; % 50, 200, 500
 fixedHorizonValue = 2.5; 
 cost = 0;  
 textHandle1 = text();  textHandle2 = text(); 
-plotMode = false; 
-videoMode = true;
+plotMode = true; 
+videoMode = false;
 data = zeros(periodT/timeResolution+1, numOfTargets, 3);
 timeSteps = 1;
 frameCount = 1;
@@ -57,18 +57,20 @@ for t = 0:timeResolution:periodT
     end
     
     % display & video
-    if rem(t,0.1)==0
+    if rem(t,0.1)==0 
         time = t
-        graph.updateGraph(1,t);
-        if t~=0
-            delete(textHandle1);
-            textHandle1 = text(0.05,0.96,['Cost: ',num2str(cost/t,5)],'Color','k','FontSize',10);
-        end
-        delete(textHandle2);
-        textHandle2 = text(0.05,0.92,['Time: ',num2str(t,5)],'Color','k','FontSize',10);
+% %         graph.updateGraph(1,t);
+% %         if t~=0
+% %             delete(textHandle1);
+% %             textHandle1 = text(0.05,0.96,['Cost: ',num2str(cost/t,5)],'Color','k','FontSize',10);
+% %         end
+% %         delete(textHandle2);
+% %         textHandle2 = text(0.05,0.92,['Time: ',num2str(t,5)],'Color','k','FontSize',10);
         
-        frameArray(frameCount) = getframe(gcf);
-        frameCount = frameCount + 1;
+        if videoMode
+            frameArray(frameCount) = getframe(gcf);
+            frameCount = frameCount + 1;
+        end
     end
     
     timeSteps = timeSteps + 1;
@@ -126,7 +128,13 @@ if plotMode
      ylabel('Cost: $J_T$','Interpreter','Latex')
      xlabel('Time: $T$','Interpreter','Latex')
      grid on
-    
+     
+     
+     executionTImes = [];
+     for a = 1:1:numOfAgents
+        executionTImes = [executionTImes; graph.agents(a).executionTimes(:,3)];
+     end
+     disp(['Mean execution time: ',num2str(mean(executionTImes))]);
 end
 
 if videoMode
