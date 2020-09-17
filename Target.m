@@ -120,12 +120,12 @@ classdef Target <  handle
         
         function peakMin = computeLowerBound(obj,maxTime)
             maxTime = max(maxTime);
-%             xss = (obj.A+sqrt(obj.A^2+obj.G*obj.Q))/obj.G;
-%             peakMin = exp(2*obj.A*maxTime)*(xss + obj.Q*(1-exp(-2*obj.A*maxTime))/(2*obj.A));
-            A_i = (obj.A + sqrt(obj.A^2 + obj.Q*obj.G))^2/(2*obj.A*obj.G);
-            B_i = 2*obj.A;
-            C_i = obj.Q/(2*obj.A);
-            peakMin = A_i*exp(B_i*maxTime) - C_i;
+            xss = (obj.A+sqrt(obj.A^2+obj.G*obj.Q))/obj.G;
+            peakMin = exp(2*obj.A*maxTime)*(xss + obj.Q*(1-exp(-2*obj.A*maxTime))/(2*obj.A));
+            %A_i = (obj.A + sqrt(obj.A^2 + obj.Q*obj.G))^2/(2*obj.A*obj.G);
+            %B_i = 2*obj.A;
+            %C_i = obj.Q/(2*obj.A);
+            %peakMin = A_i*exp(B_i*maxTime) - C_i;
         end
         
         

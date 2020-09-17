@@ -24,7 +24,7 @@ classdef Graph < handle
         end
         
         
-        function obj = loadARandomGraph(obj, numOfTargets, numOfAgents, dimentionOfSpace, sizeOfSpace, communicationRadius, tragetControllersEnabled)
+        function obj = loadARandomGraph(obj, numOfTargets, numOfAgents, dimentionOfSpace, sizeOfSpace, communicationRadius, targetControllersEnabled)
             
             % generate target List
             targetLocations = sizeOfSpace*rand(numOfTargets,dimentionOfSpace);
@@ -104,7 +104,7 @@ classdef Graph < handle
                 obj.targets(i).B = b(i); % input matrix
                 obj.targets(i).K = 2;%(alpha + a(i))/b(i); % initial target state
                 obj.targets(i).r = 10*sin(i); % reference input
-                if tragetControllersEnabled
+                if targetControllersEnabled
                     obj.targets(i).controllerEnabled = true;
 % %                     obj.targets(i).u = -obj.targets(i).K*obj.targets(i).phiHat + (obj.targets(i).K - a(i)/b(i))*r(i); % initial input based on state estimate
                     rDot = 20*cos(i);
