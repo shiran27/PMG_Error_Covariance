@@ -408,16 +408,16 @@ clear all
 close all
 clc
 graph = Graph(0); % create the graph object : index 0 for main graph 
-rand('seed', 250); %% try this with 2 to see the error
+rand('seed', 2); %% try this with 2 to see the error
 numOfTargets = 7; % 
 dimentionOfSpace = 2;
 sizeOfSpace = 1;  % 1x1 square
-communicationRadius = 0.45; 
+communicationRadius = 0.7; 
 
 % % partition the graph
 numOfAgents = 2;
 
-graph = graph.loadARandomGraph(numOfTargets, numOfAgents, dimentionOfSpace, sizeOfSpace, communicationRadius);
+graph = graph.loadARandomGraph(numOfTargets, numOfAgents, dimentionOfSpace, sizeOfSpace, communicationRadius,0);
 graph.drawGraph(1);
 
 
@@ -459,6 +459,7 @@ end
 %drawing the fianl subgraphs and cycles with costs, lowerBounds and dwell times
 costs2 = [];
 lowerBounds2 = [];
+oldLowerBounds2 = [];
 dwellTimes = cell(numOfAgents,1);
 for i = 1:1:numOfAgents
     cycles(i).drawFullCycle(subGraphs(i)); 
@@ -467,6 +468,7 @@ for i = 1:1:numOfAgents
     costs2 = [costs2, cost];
     lowerBound = cycles(i).getLowerBound(subGraphs(i));
     lowerBounds2 = [lowerBounds2, lowerBound];
+    oldLowerBounds2  = [oldLowerBounds2, cycles(i).getLowerBoundOld(graph)];
     
     dwellTimes{i} = cycles(i).cycleEvaluator.getDwellTimes();
 end
@@ -474,6 +476,7 @@ costs1
 lowerBounds1
 costs2
 lowerBounds2
+oldLowerBounds2
 dwellTimes{:}
 % end Sam's main code: Fast, with target exchanges
 

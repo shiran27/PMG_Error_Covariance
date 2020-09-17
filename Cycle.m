@@ -747,25 +747,27 @@ classdef Cycle
                 [cost,~]=obj.cycleEvaluator.goldenRatioSearch(tMin,tMax);
             end
         end
-%         function lb = getLowerBound(obj,graph)
-%             visitingSequence = obj.targetList;
-%             travelTime = obj.transitTimeList;
-%             % Sam
-%             lb = 0;
-%             for indexTarget = 1:length(graph.targets)
-%                 currentTargetVisits = find(visitingSequence == indexTarget);
-%                 currentTargetTravelTime = zeros(size(currentTargetVisits));
-%                 for indexCurrentVisit = 1:length(currentTargetVisits)-1
-%                     currentTargetTravelTime(indexCurrentVisit) = sum(travelTime(currentTargetVisits(indexCurrentVisit):currentTargetVisits(indexCurrentVisit+1)-1));
-%                 end
-%                 currentTargetTravelTime(end) = sum(travelTime(currentTargetVisits(end):end))+...
-%                     sum(travelTime(1:currentTargetVisits(1)-1));
-%                 currentLb = graph.targets(indexTarget).computeLowerBound(currentTargetTravelTime);
-%                 if currentLb > lb
-%                     lb = currentLb;
-%                 end
-%             end
-%         end
+        function lb = getLowerBoundOld(obj,graph)
+            visitingSequence = obj.targetList;
+            travelTime = obj.transitTimeList;
+            % Sam
+            lb = 0;
+            for indexTarget = 1:length(graph.targets)
+                currentTargetVisits = find(visitingSequence == indexTarget);
+                if ~isempty(currentTargetVisits)
+                    currentTargetTravelTime = zeros(size(currentTargetVisits));
+                    for indexCurrentVisit = 1:length(currentTargetVisits)-1
+                        currentTargetTravelTime(indexCurrentVisit) = sum(travelTime(currentTargetVisits(indexCurrentVisit):currentTargetVisits(indexCurrentVisit+1)-1));
+                    end
+                    currentTargetTravelTime(end) = sum(travelTime(currentTargetVisits(end):end))+...
+                        sum(travelTime(1:currentTargetVisits(1)-1));
+                    currentLb = graph.targets(indexTarget).computeLowerBound(currentTargetTravelTime);
+                    if currentLb > lb
+                        lb = currentLb;
+                    end
+                end
+            end
+        end
         
         
     end
