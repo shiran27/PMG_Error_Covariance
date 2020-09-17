@@ -24,7 +24,7 @@ classdef Graph < handle
         end
         
         
-        function obj = loadARandomGraph(obj, numOfTargets, numOfAgents, dimentionOfSpace, sizeOfSpace, communicationRadius)
+        function obj = loadARandomGraph(obj, numOfTargets, numOfAgents, dimentionOfSpace, sizeOfSpace, communicationRadius, tragetControllersEnabled)
             
             % generate target List
             targetLocations = sizeOfSpace*rand(numOfTargets,dimentionOfSpace);
@@ -95,6 +95,27 @@ classdef Graph < handle
                 obj.targets(i).OmegaAtLastEvent = obj.targets(i).Omega;
             end
             
+            
+            % target control related information
+            b = 0.01+0.4*rand(numOfTargets,1);
+% %             r = 5+round(10*rand(numOfTargets,1)); 
+% %             alpha = 1; % error dynamics \dot{e} = -alpha e
+            for i = 1:1:numOfTargets
+                obj.targets(i).B = b(i); % input matrix
+                obj.targets(i).K = 2;%(alpha + a(i))/b(i); % initial target state
+                obj.targets(i).r = 10*sin(i); % reference input
+                if tragetControllersEnabled
+                    obj.targets(i).controllerEnabled = true;
+% %                     obj.targets(i).u = -obj.targets(i).K*obj.targets(i).phiHat + (obj.targets(i).K - a(i)/b(i))*r(i); % initial input based on state estimate
+                    rDot = 20*cos(i);
+                    obj.targets(i).u = -(1/obj.targets(i).B)*((obj.targets(i).K+obj.targets(i).A)*obj.targets(i).phiHat - (rDot+obj.targets(i).K*obj.targets(i).r));
+                else
+                    obj.targets(i).controllerEnabled = false;
+                    obj.targets(i).u = 0;
+                end
+            end
+            
+            
         end
         
         function result = getTarget(obj, targetIndex, requirement)
@@ -150,12 +171,6 @@ classdef Graph < handle
                 obj.edges(i).drawEdge();
             end
             
-            for i = 1:1:length(obj.edges)
-                if obj.edges(i).enabled
-                    obj.edges(i).drawEdge();
-                end
-            end
-            
             % draw targets
             for i = 1:1:length(obj.targets)
                 obj.targets(i).drawTarget();
@@ -169,12 +184,12 @@ classdef Graph < handle
         end
         
         
-         function outputArg = updateGraph(obj, figNum, timeVal)
+        function outputArg = updateGraph(obj, figNum, timeVal)
             figure(figNum)
             
             % update targets
             thickness = 0.01; 
-            scalingFactor = 1000;
+            scalingFactor = 500; %1000
             for i = 1:1:length(obj.targets)
                 posX = obj.targets(i).position(1);
                 posY = obj.targets(i).position(2);
@@ -183,12 +198,23 @@ classdef Graph < handle
                     delete(obj.targets(i).graphicHandles(1));
                     delete(obj.targets(i).graphicHandles(2));
                 end
-                r = rectangle('Position',[posX-thickness, posY, 2*thickness, normOmega_i/scalingFactor],...
+                height1 = normOmega_i/scalingFactor;
+                r = rectangle('Position',[posX-thickness, posY, 2*thickness, height1],...
                     'FaceColor',[0.8 0.8 0 0.5],'EdgeColor','k','LineWidth',0.01);
                 t = text(posX+0.02, posY+0.02,num2str(normOmega_i,4),'Color','b','FontSize',10);
                 obj.targets(i).graphicHandles(1) = r;
                 obj.targets(i).graphicHandles(2) = t;
                 
+                if obj.targets(i).controllerEnabled
+                    if timeVal~=0
+                        delete(obj.targets(i).graphicHandles(3));
+                    end
+                    scalingFactor2 = 1;
+                    height2 = scalingFactor2*abs(obj.targets(i).phi - obj.targets(i).r); % phiHat-r
+                    r2 = rectangle('Position',[posX-thickness, posY+height1, 2*thickness, height2],...
+                    'FaceColor',[0.8 0.1 0 0.1],'EdgeColor','k','LineWidth',0.01);
+                    obj.targets(i).graphicHandles(3) = r2; 
+                end
             end
             
             
@@ -226,7 +252,28 @@ classdef Graph < handle
         end
          
          
-         
+        function output = triggerExternalStatePerturbation(obj,activate)
+        
+            magnitudeQ = 2; % increase the process noise covariance at each target : Q
+            magnitudeR = 1; % increase the measurement noise covariance at each agent : R
+            for i = 1:1:length(obj.targets)
+                if activate
+                    obj.targets(i).Q = obj.targets(i).Q*magnitudeQ;
+                    obj.targets(i).R = obj.targets(i).R*magnitudeR;
+                else
+                    obj.targets(i).Q = obj.targets(i).Q/magnitudeQ;
+                    obj.targets(i).R = obj.targets(i).R/magnitudeR;
+                end
+            end
+            
+            % trigger coverdness event at all the agents!
+            for a = 1:1:length(obj.agents)
+                obj.agents(a).coverednessEventTriggered = true;
+            end
+            
+        end
+        
+        
         function outputArg = drawAll(~, subGraphs, cycles)
             figNum = get(gcf,'Number')+1;
             

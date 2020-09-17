@@ -7,9 +7,6 @@ classdef Target <  handle
         position
         residingAgents
         
-        uncertaintyRate
-        sensingRate
-        
         % target state and error covariance 
         phi  % state 
         phiHat % state estimate
@@ -28,18 +25,13 @@ classdef Target <  handle
         R
         
         G
-%         X
-%         tArrival
-%         tDeparture
-%         tTotal
-%         NdoublingSteps
-%         dtPlot
-%         peakTraces
-%         tOn
-%         tol
-%         lambda
-%         Z
-%         S
+        
+        % target control related paramters
+        controllerEnabled
+        B % control input matrix
+        u % control input
+        r % reference input
+        K % controller gain
         
     end
     
@@ -60,27 +52,7 @@ classdef Target <  handle
             
             obj.G = H'*inv(R)*H;
             
-%             obj.NdoublingSteps = 5;     
-%             obj.X = obj.updateCov(tArrival,tDeparture,tTotal);
-%             obj.dtPlot = 1e-3;
-%             obj.tol = 1e-6;
-%             
-%             if length(A)==1
-%                 obj.R = 1/obj.G;
-%                 obj.lambda = -sqrt(obj.R*obj.A^2+obj.Q)/sqrt(obj.R);
-%                 
-%                 z21 = obj.Q*sqrt(obj.R)/(2*sqrt(obj.R*obj.A^2+obj.Q));
-%                 z22 = 0.5*(sqrt(obj.R)*obj.A/sqrt(obj.R*obj.A^2+obj.Q)+1);
-%                 z11 = -0.5*obj.Q*sqrt(obj.R)/sqrt(obj.R*obj.A^2+obj.Q);
-%                 z12 = 0.5-0.5*obj.A*sqrt(obj.R)/sqrt(obj.R*obj.A^2+obj.Q);
-%                 obj.Z = [z11,z12;z21,z22];
-%                 
-%                 s11 = (-(obj.A*sqrt(obj.R))-sqrt(obj.Q+obj.A^2*obj.R))/(obj.Q*sqrt(obj.R));
-%                 s12 = (-(obj.A*sqrt(obj.R))+sqrt(obj.Q+obj.A^2*obj.R))/(obj.Q*sqrt(obj.R));
-%                 s21 = 1;
-%                 s22 = 1;
-%                 obj.S = [s11,s12;s21,s22];
-%             end
+
         end
         
         function outputArg = drawTarget(obj)
@@ -89,30 +61,57 @@ classdef Target <  handle
             text(obj.position(1),obj.position(2)-0.04,num2str(obj.index),'Color','blue','FontSize',10);
         end
         
-        function [cost,data] = update(obj,deltaT,plotMode)
+        function [cost,data,cost2] = update(obj,deltaT,plotMode,currentTime)
             
             obj.timeSinceLastEvent = obj.timeSinceLastEvent + deltaT;
             
             Omega1 = obj.Omega;
+            controlError1 = abs(obj.phi-obj.r);
             
+            % target state update
             w = mvnrnd(0,obj.Q); % w(t), zero mean with covariance Q, 
-            obj.phi = obj.phi + deltaT*(obj.A*obj.phi + w); % phi_i(t+deltaT)
+%                 obj.phi = obj.phi + deltaT*(obj.A*obj.phi + w); % phi_i(t+deltaT)
+            obj.phi = obj.phi + deltaT*(obj.A*obj.phi + obj.B*obj.u + w); % phi_i(t+deltaT)
+            
+            % update of the state estimates
             if isempty(obj.residingAgents)
-                obj.phiHat = obj.phiHat + deltaT*(obj.A*obj.phiHat); % phiHat_i(t+deltaT)
+                obj.phiHat = obj.phiHat + deltaT*(obj.A*obj.phiHat + obj.B*obj.u); % phiHat_i(t+deltaT)
 %                 obj.Omega = obj.Omega + deltaT*(obj.A*obj.Omega + obj.Omega*transpose(obj.A) + obj.Q); %Omega_i(t+deltaT)
                 obj.updateLocalCovariance(0); % idle
             else
                 v = mvnrnd(0,obj.R); % v(t), zero mean with covariance R, 
                 z = obj.H*obj.phi + v; % z(t) observation 
-                obj.phiHat = obj.phiHat + deltaT*(obj.A*obj.phiHat + obj.Omega*transpose(obj.H)*inv(obj.R)*(z-obj.H*obj.phiHat)); % phiHat_i(t+deltaT)
+                obj.phiHat = obj.phiHat + deltaT*(obj.A*obj.phiHat + obj.B*obj.u + obj.Omega*transpose(obj.H)*inv(obj.R)*(z-obj.H*obj.phiHat)); % phiHat_i(t+deltaT)
 %                 obj.Omega = obj.Omega + deltaT*(obj.A*obj.Omega + obj.Omega*transpose(obj.A) + obj.Q - obj.Omega*obj.G*obj.Omega); %Omega_i(t+deltaT)
                 obj.updateLocalCovariance(1); % dwell mode (active)
             end
             
+            % control input computation (for the next time instant) based on the state estimate 
+            if obj.controllerEnabled
+                obj.r = 10*sin(2*currentTime+obj.index);
+                rDot = 20*cos(2*currentTime+obj.index);
+                obj.u = -(1/obj.B)*((obj.K+obj.A)*obj.phiHat - (rDot+obj.K*obj.r));
+% %                 obj.u = -obj.K*obj.phiHat + (obj.K - obj.A/obj.B)*obj.r; % otherwise obj.u = 0 always
+            else
+                obj.u = 0;
+            end
+           
+            % costs 
             Omega2 = obj.Omega;
             cost = (Omega1 + Omega2)*deltaT/2;
+            cost2 = 0;
+            if obj.controllerEnabled
+                controlError2 = abs(obj.phi - obj.r);
+                cost2 = (controlError1 + controlError2)*deltaT/2;
+            end
+            
+            % data storage
             if plotMode
-                data = [obj.phi, obj.phiHat, obj.Omega];
+                if obj.controllerEnabled
+                    data = [obj.phi, obj.phiHat, obj.Omega, obj.r];
+                else
+                    data = [obj.phi, obj.phiHat, obj.Omega, 0];
+                end
             else
                 data = [];
             end
@@ -153,7 +152,6 @@ classdef Target <  handle
             q = obj.Q;
             
             J_i = (1/(2*a))*(Omega_0 + (q/(2*a)))*(exp(2*a*duration)-1)-(q/(2*a))*duration;
-            
         end
         
         
@@ -229,15 +227,19 @@ classdef Target <  handle
             
             Omega_0 = obj.Omega;
             c_1 = v_2*Omega_0 - 1;
-            c_2 = -v_1*Omega_0 + 1;
-            c_3 = v_1*c_1;
-            c_4 = v_2*c_2;
+            c_2 = -v_1*Omega_0 + 1
+%             c_3 = v_1*c_1;
+%             c_4 = v_2*c_2;
             
             Omega_ss = 1/v_1;
-            if Omega_ss < Omega_0
+            if Omega_ss < Omega_0 - 0.001 & c_2 ~= 0
                 dwellTime = (-1/lambda)*log((-e*v_1*c_1)/((v_1+(1-e)*v_2)*c_2));
+                if dwellTime>-2
+                    dwellTime = abs(dwellTime);
+                end
             elseif Omega_ss > Omega_0
-                dwellTime = (-1/lambda)*log((-e*v_1*c_1)/((v_1+(1-e)*v_2)*c_2));
+%                 dwellTime = (-1/lambda)*log((-e*v_1*c_1)/((v_1+(1-e)*v_2)*c_2));
+                dwellTime = 0;
             else
                 dwellTime = 0;
             end

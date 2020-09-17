@@ -43,12 +43,12 @@ classdef Agent < handle
             obj.learnMode = false; % for RHC
              
             % for RHC-Learn
-            obj.slidingWindowSize = 25;
+            obj.slidingWindowSize = 75; %25
             obj.pastInputOutputData.inputs = cell(numOfTargets,2);
             obj.pastInputOutputData.outputs = cell(numOfTargets,2);
             obj.pastInputOutputData.dataCounts = zeros(numOfTargets,2);
 
-            hiddenLayerSize = [10]; % one layer with 10 neurons
+            hiddenLayerSize = [10];%[10]; % one layer with 10 neurons
             net = patternnet(hiddenLayerSize);
             nets = cell(numOfTargets,2);
             [nets{:}] = deal(net); % repmat version
@@ -100,7 +100,7 @@ classdef Agent < handle
                     
                     if nextTargetId ~= obj.residingTarget
                         if isempty(obj.executionTimes)
-                            obj.executionTimes = zeros(2000,3);
+                            obj.executionTimes = zeros(3000,3);
                         end
                         obj.executionTimes(end,end) = obj.executionTimes(end,end) + 1;
                         count = obj.executionTimes(end,end);
@@ -144,7 +144,7 @@ classdef Agent < handle
 %                 executionTime = toc;
                 if dwellTimeAhead > 0.001
                     if isempty(obj.executionTimes)
-                        obj.executionTimes = zeros(2000,3);
+                        obj.executionTimes = zeros(3000,3);
                         obj.executionTimes(end,end) = obj.executionTimes(end,end) + 1;
                         count = obj.executionTimes(end,end);
                         obj.executionTimes(count,:) = [currentTime, 1, executionTime];
@@ -177,11 +177,14 @@ classdef Agent < handle
                 dwellTime = 2.5;
                 
                 
-            elseif isequal(controlMethod,'variable')
+            elseif isequal(controlMethod,'BDC') | isequal(controlMethod,'BDC-Periodic')
                 currentTargetId = obj.residingTarget;
-                epsilon = 0.05; % get Omega/Omega_ss to 1.1 (or 0.9 if Omgea_0 is less than Omega_ss)
+                epsilon = 0.075; % 0.095,0.05; get Omega/Omega_ss to 1.1 (or 0.9 if Omgea_0 is less than Omega_ss)
+                if isequal(controlMethod,'BDC-Periodic')
+                    epsilon = 0.075;
+                end
                 dwellTime = graph.targets(currentTargetId).dwellTimeToReduceCovarianceUptoFraction(epsilon);
-                
+                           
                 
             elseif isequal(controlMethod,'RHC')
                 currentTargetId = obj.residingTarget;
@@ -278,7 +281,7 @@ classdef Agent < handle
                     jStar = graph.neighbors{currentTargetId}(vec2ind(result)+1);
                     
                     % if some ambiguity left: evaluate RHCP1 for all the ones and Re-learn the neural net
-                    if (1-max(result))>0.1 & isequal(controlMethod,'RHC-Re-Learn')
+                    if (1-max(result))>0.2 & isequal(controlMethod,'RHC-Re-Learn') % 0.1
                         needsReLearning = true;
                     else
                         % if suceess e > 0.1 evaluate only the RHCP1 for the j* found
@@ -351,7 +354,12 @@ classdef Agent < handle
                         end
                     end
                 end
-                [~, dwellTime, ~] = obj.solveRHCP1(nextTarget,feasibleTargets,graph,horizon); 
+                
+                if isempty(feasibleTargets)
+                    dwellTime = 1;
+                else
+                    [~, dwellTime, ~] = obj.solveRHCP1(nextTarget,feasibleTargets,graph,horizon); 
+                end
                 
                 
             elseif isequal(controlMethod,'Periodic')
@@ -371,7 +379,7 @@ classdef Agent < handle
         function [nextTargetId, travelTimeAhead] = nextVisitTarget(obj, graph, horizon, controlMethod)
             currentTargetId = obj.residingTarget;
             
-            if isequal(controlMethod,'RHC-Periodic') | isequal(controlMethod,'Periodic')
+            if isequal(controlMethod,'RHC-Periodic') | isequal(controlMethod,'BDC-Periodic') | isequal(controlMethod,'Periodic')
                 % finding the next target to visit
                 if obj.cycleState(1) < 0 % have to enter the cycle
                     nextTargetId = obj.entryPathToCycle(end+obj.cycleState(1)+1);
@@ -434,7 +442,7 @@ classdef Agent < handle
                     result = net(input);
                     
                     % if some ambiguity left: evaluate RHCP1 for all the ones and Re-learn the neural net
-                    if (1-max(result))>0.1 & isequal(controlMethod,'RHC-Re-Learn')
+                    if (1-max(result))>0.2 & isequal(controlMethod,'RHC-Re-Learn') % 0.1, 0.2
                         needsReLearning = true;
                     else
                         % if suceess e > 0.1 we know the RHCP2 solution is directly j* found
@@ -488,7 +496,7 @@ classdef Agent < handle
             nextTargetId = currentTargetId;
             minCost = inf;
             for targetId = feasibleTargets
-                if  isequal(controlMethod,'variable') | isequal(controlMethod,'fixed') | isequal(controlMethod,'random') %isequal(controlMethod,'highestCovariance')
+                if  isequal(controlMethod,'BDC') | isequal(controlMethod,'fixed') | isequal(controlMethod,'random') %isequal(controlMethod,'highestCovariance')
                     cost = -1*graph.targets(targetId).Omega; % select the target with the highest covariance out of feasible targets
                 
                 elseif isequal(controlMethod,'RHC')
@@ -684,7 +692,7 @@ classdef Agent < handle
                 end
             end
             
-            A = vpa(simplify(active),6); 
+            A = vpa(simplify(active),6);
             B = vpa(simplify(inactive),6);
             J = vpa(simplify(-A/(B+A)),6);
             
@@ -721,7 +729,9 @@ classdef Agent < handle
                 u_iSol = double(u_iSol);
                 u_jSol = double(u_jSol);
                 minCost = double(subs(J,[u_i,u_j],[u_iSol,u_jSol]));
-                %disp(['Solution Found: i=',num2str(currentTarget),', j=',num2str(nextTarget),', cost=',num2str(minCost),', u_i=',num2str(u_iSol),', u_j=',num2str(u_jSol)])
+%                 disp(['Solution Found: i=',num2str(currentTarget),', j=',num2str(nextTarget),', cost=',num2str(minCost),', u_i=',num2str(u_iSol),', u_j=',num2str(u_jSol)])
+%                 A
+%                 B
 %                 H
 %                 J
             else

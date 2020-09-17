@@ -209,7 +209,7 @@ classdef Cycle
            
            subCycleVector = obj.subCycleMatrix(:,indexInCycle); % we need to break this subcycle into two
            subCycleIndices = find(subCycleVector==1); % ex:: if this is [5,6,7,8] we only can add new aux target of i at 6
-           if length(subCycleIndices)>3 % otherwise no way to remove an edge within the subcycle
+           if length(subCycleIndices)>=3 % otherwise no way to remove an edge within the subcycle
                maxGain = 0;
                maxGainCycle = obj;
                for ind = subCycleIndices'

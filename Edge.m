@@ -20,9 +20,13 @@ classdef Edge
         
         function outputArg = drawEdge(obj)
             hold on
-            p1 = plot(obj.locations(:,1),obj.locations(:,2),'k','LineWidth',2);
+% %             p1 = plot(obj.locations(:,1),obj.locations(:,2),'k','LineWidth',2);
             if ~obj.enabled 
-                p1.Color(4) = 0.1;%0.2
+                plot(obj.locations(:,1),obj.locations(:,2),'k','LineWidth',2, ...
+                    'CreateFcn', @(l, e) set(l, 'Color', [0 0 0 .1]));
+% %                 p1.Color(4) = 0.1;
+            else
+                plot(obj.locations(:,1),obj.locations(:,2),'k','LineWidth',2);
             end
            
         end
