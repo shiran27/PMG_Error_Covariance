@@ -107,10 +107,11 @@ classdef Target <  handle
             
             % data storage
             if plotMode
+                eta_i = ~isempty(obj.residingAgents);
                 if obj.controllerEnabled
-                    data = [obj.phi, obj.phiHat, obj.Omega, obj.r];
+                    data = [obj.phi, obj.phiHat, obj.Omega, obj.r, eta_i];
                 else
-                    data = [obj.phi, obj.phiHat, obj.Omega, 0];
+                    data = [obj.phi, obj.phiHat, obj.Omega, 0, eta_i];
                 end
             else
                 data = [];
@@ -120,12 +121,12 @@ classdef Target <  handle
         
         function peakMin = computeLowerBound(obj,maxTime)
             maxTime = max(maxTime);
-            xss = (obj.A+sqrt(obj.A^2+obj.G*obj.Q))/obj.G;
-            peakMin = exp(2*obj.A*maxTime)*(xss + obj.Q*(1-exp(-2*obj.A*maxTime))/(2*obj.A));
-            %A_i = (obj.A + sqrt(obj.A^2 + obj.Q*obj.G))^2/(2*obj.A*obj.G);
-            %B_i = 2*obj.A;
-            %C_i = obj.Q/(2*obj.A);
-            %peakMin = A_i*exp(B_i*maxTime) - C_i;
+%             xss = (obj.A+sqrt(obj.A^2+obj.G*obj.Q))/obj.G;
+%             peakMin = exp(2*obj.A*maxTime)*(xss + obj.Q*(1-exp(-2*obj.A*maxTime))/(2*obj.A));
+            A_i = (obj.A + sqrt(obj.A^2 + obj.Q*obj.G))^2/(2*obj.A*obj.G);
+            B_i = 2*obj.A;
+            C_i = obj.Q/(2*obj.A);
+            peakMin = A_i*exp(B_i*maxTime) - C_i;
         end
         
         

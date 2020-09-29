@@ -58,7 +58,8 @@ classdef Agent < handle
         end
         
         
-        function obj = update(obj,deltaT,currentTime,graph,horizon,controlMethod)
+        function distanceTraveled = update(obj,deltaT,currentTime,graph,horizon,controlMethod)
+            distanceTraveled = 0;
             if currentTime ~= 0 & ~obj.coverednessEventTriggered
                 if currentTime >  obj.nextEventTime & obj.agentMode == 1 % travel time exceeded
                     % pick a dwell time and start dwelling 
@@ -85,7 +86,9 @@ classdef Agent < handle
                     
                     
                     obj.nextEventTime = currentTime + dwellTimeAhead;
+                    distanceTraveled = norm(obj.position - graph.targets(obj.residingTarget).position);
                     obj.position = graph.targets(obj.residingTarget).position;
+                    
                 elseif currentTime >  obj.nextEventTime & obj.agentMode == 0 % dwell time exceeded
                     % pick a neighbor to visit and start travelling
                     disp(['Agent ',num2str(obj.index),' finished dwelling at t = ',num2str(currentTime),' at taregt ',num2str(obj.residingTarget)])
@@ -129,7 +132,8 @@ classdef Agent < handle
                 elseif obj.agentMode == 1 % travelling
                     % keep travelling
                     theta = obj.orientation; %graph.angleMatrix(obj.residingTarget(1),obj.residingTarget(2));
-                    obj.position = obj.position + obj.speed*deltaT*[cos(theta), sin(theta)];
+                    distanceTraveled = obj.speed*deltaT;
+                    obj.position = obj.position + distanceTraveled*[cos(theta), sin(theta)];
                 else
                     % keep dwelling
                 end
@@ -181,7 +185,7 @@ classdef Agent < handle
                 currentTargetId = obj.residingTarget;
                 epsilon = 0.075; % 0.095,0.05; get Omega/Omega_ss to 1.1 (or 0.9 if Omgea_0 is less than Omega_ss)
                 if isequal(controlMethod,'BDC-Periodic')
-                    epsilon = 0.075;
+                    epsilon = 0.075; % use 0.095 only for Case 2
                 end
                 dwellTime = graph.targets(currentTargetId).dwellTimeToReduceCovarianceUptoFraction(epsilon);
                            
