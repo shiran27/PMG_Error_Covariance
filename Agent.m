@@ -183,12 +183,9 @@ classdef Agent < handle
                 
             elseif isequal(controlMethod,'BDC') | isequal(controlMethod,'BDC-Periodic')
                 currentTargetId = obj.residingTarget;
-                epsilon = 0.075; % 0.095,0.05; get Omega/Omega_ss to 1.1 (or 0.9 if Omgea_0 is less than Omega_ss)
-                if isequal(controlMethod,'BDC-Periodic')
-                    epsilon = 0.075; % use 0.095 only for Case 2
-                end
+                epsilon = graph.targets(currentTargetId).BDCThreshold; % if epsilon = 0.1, get Omega/Omega_ss to 1.1 (or 0.9 if Omgea_0 is less than Omega_ss)
                 dwellTime = graph.targets(currentTargetId).dwellTimeToReduceCovarianceUptoFraction(epsilon);
-                           
+                
                 
             elseif isequal(controlMethod,'RHC')
                 currentTargetId = obj.residingTarget;

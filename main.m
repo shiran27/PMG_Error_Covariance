@@ -7,18 +7,18 @@ clc
 graph = Graph(0); % create the graph object : index 0 for main graph 
 
 %Case 1: 7, 7, 0.7, 2;   Case 2: 250, 7, 0.45, 2;   Case 3: 500, 10, 0.45, 4;    Case 4: 77, 10, 0.45, 4 
-rand('seed', 250); %% 7, 250, 500
-numOfTargets = 7; % 7, 10
+rand('seed', 77); %% 7, 250, 500
+numOfTargets = 10; % 7, 10
 dimentionOfSpace = 2;
 sizeOfSpace = 1;  % 1x1 square
 communicationRadius = 0.45; %0.7,  0.45
 
 % load the agents
-numOfAgents = 2; %2, 4
+numOfAgents = 4; %2, 4
 
 % Control Options: RHC-Re-Learn, Periodic, RHC-Periodic, RHC-Learn, RHC, BDC-Periodic, BDC, fixed, random
-controlMethod = 'RHC';
-targetControllersEnabled = false;
+controlMethod = 'BDC-Periodic';
+targetControllersEnabled = true;
 
 % create the graph and draw
 graph = graph.loadARandomGraph(numOfTargets, numOfAgents, dimentionOfSpace, sizeOfSpace, communicationRadius, targetControllersEnabled);
@@ -28,6 +28,13 @@ graph.drawGraph(1);
 if isequal(controlMethod,'RHC-Periodic') | isequal(controlMethod,'BDC-Periodic') | isequal(controlMethod,'Periodic')
     graph.assignCyclesToAgents(controlMethod);
 end
+
+% BDC learning Thresholds
+if isequal(controlMethod,'BDC') | isequal(controlMethod,'BDC-Periodic')
+    graph.loadBDCThresholds('results/Case3/ST/Case3_RHC_Periodic.mat');
+end
+
+
 
 
 timeResolution = 0.001;
@@ -89,7 +96,7 @@ for t = 0:timeResolution:periodT
             textHandle2 = text(0.05,0.92,['Time: ',num2str(t,5)],'Color','k','FontSize',10);
             if targetControllersEnabled
                 delete(textHandle3);
-                textHandle3 = text(0.05,0.88,['Ctrl. Cost: ',num2str(controlCost/t,5)],'Color','k','FontSize',10);
+                textHandle3 = text(0.05,0.88,['Ctrl. Cost: ',num2str(periodT*controlCost/t,5)],'Color','k','FontSize',10);
             end
         end
         

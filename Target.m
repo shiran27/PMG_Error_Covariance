@@ -15,6 +15,8 @@ classdef Target <  handle
         timeSinceLastEvent;
         OmegaAtLastEvent;
         
+        BDCThreshold; % for the BDC method
+        
         graphicHandles
         
         % From SAM
@@ -52,6 +54,7 @@ classdef Target <  handle
             
             obj.G = H'*inv(R)*H;
             
+            obj.BDCThreshold = 0.15; % 0.075generally, change to 0.095 for Case 2 BDC-Periodic method
 
         end
         
@@ -234,7 +237,9 @@ classdef Target <  handle
             
             Omega_ss = 1/v_1;
             if Omega_ss < Omega_0 - 0.001 & c_2 ~= 0
-                dwellTime = (-1/lambda)*log((-e*v_1*c_1)/((v_1+(1-e)*v_2)*c_2));
+                dwellTime = (-1/lambda)*log((e*v_1*c_1)/((v_1-(1+e)*v_2)*c_2));
+%                 dwellTime =
+%                 (-1/lambda)*log((-e*v_1*c_1)/((v_1+(1-e)*v_2)*c_2)); %error!
                 if dwellTime>-2
                     dwellTime = abs(dwellTime);
                 end
@@ -281,6 +286,15 @@ classdef Target <  handle
                 
                 obj.Omega = (c_1 + c_2*exp(-lambda*duration))/(c_3 + c_4*exp(-lambda*duration));
             end
+        end
+        
+        
+        function Omega_ss = getSteadyStateCovariance(obj)
+            a = obj.A;
+            q = obj.Q;
+            g = obj.G;
+            v_1 = (-a+sqrt(a^2+q*g))/q;
+            Omega_ss = 1/v_1;
         end
         
         

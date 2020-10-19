@@ -1024,6 +1024,27 @@ classdef Graph < handle
         
         
         
+        function output = loadBDCThresholds(obj, directory)
+            
+            load(directory,'data');
+            numOfTargets = length(obj.targets);
+            for i = 1:1:numOfTargets
+    
+                Omega_i = data(:,i,3);
+                eta_i = data(:,i,5);
+                %Omega_iU = Omega_i(diff(eta_i)==1)
+                i
+                Omega_iL = Omega_i(diff(eta_i)==-1)
+                Omega_iL = mean(Omega_i(diff(eta_i)==-1))
+                Omega_iss = obj.targets(i).getSteadyStateCovariance();
+                obj.targets(i).BDCThreshold = (Omega_iL-Omega_iss)/Omega_iss;    
+                
+            end
+            
+        end
+        
+        
+        
         
     end
 end
